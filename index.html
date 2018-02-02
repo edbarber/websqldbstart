@@ -17,6 +17,7 @@
                     tx.executeSql("CREATE TABLE IF NOT EXISTS " +
                         "todo(ID TEXT PRIMARY KEY, todo TEXT, added_on DATETIME, finished_on DATETIME)", [],
                         function () {
+                            $scope.readTodos();
                             console.log("success");
                         },
                         function () { 
@@ -26,8 +27,6 @@
                 });
 
                 $scope.addTodo = function() {
-                    $scope.todos.push({name: $scope.todoItem});
-                    
                     // insert data into table
                     db.transaction(function (tx) {
                         var dToday = new Date();
@@ -39,9 +38,43 @@
                                 
                                 console.log("success");
                                 $scope.$apply();
+                                $scope.readTodos();
                             },
                             function () {
                                 console.log("failed");
+                            }
+                        );
+                    });
+                }
+
+                $scope.readTodos = function() {
+                    db.transaction(function (tx) {
+                        tx.executeSql("SELECT * FROM todo ORDER BY added_on", [], 
+                            function(tx, rs) {
+                                $scope.todos = [];
+                                
+                                for (var i = 0; i < rs.rows.length; i++) {
+                                    $scope.todos.push({name: rs.rows.item(i).todo, 
+                                        ID: rs.rows.item(i).ID});
+                                }
+
+                                $scope.$apply();
+                            },
+                            function(err) {
+                                console.log(err);
+                            }
+                        );
+                    });
+                }
+
+                $scope.deleteTodo = function(id) {
+                    db.transaction(function(tx) {
+                        tx.executeSql("DELETE FROM todo WHERE id = ?", [id], 
+                            function() {
+                                $scope.readTodos();
+                            },
+                            function(err) {
+                                console.log(err);
                             }
                         );
                     });
@@ -53,9 +86,9 @@
         <h1>WebDb TodoList</h1>
         <p>This is a simple todolist. Type a task in the box below. Click on the plus button to add to the list</p>
         <form ng-app="TodoApp" ng-controller="TodoCtrl" ng-submit="addTodo()">
-            <div ng-repeat="todo in todos">{{todo.name}}</div>
+            <div ng-repeat="todo in todos"><button type="button" ng-click="deleteTodo(todo.ID)">-</button>&nbsp;{{todo.name}}</div>
             <input ng-model="todoItem"/>
-            <button>+</button>
+            <button type="submit">+</button>
         </form>
     </body>
 </html>
